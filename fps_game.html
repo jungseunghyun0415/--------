@@ -1,0 +1,873 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>Overwatch 3D Practice Range</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background-color: #0b0f19;
+            font-family: 'Futura', 'Segoe UI', Impact, sans-serif;
+            user-select: none;
+        }
+
+        /* 오버워치 크로스헤어 */
+        #crosshair {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 24px;
+            height: 24px;
+            transform: translate(-50%, -50%);
+            pointer-events: none;
+        }
+        .ch-line {
+            position: absolute;
+            background: #00f2fe;
+            box-shadow: 0 0 6px #00f2fe;
+        }
+        .ch-top { top: 0; left: 11px; width: 2px; height: 7px; }
+        .ch-bot { bottom: 0; left: 11px; width: 2px; height: 7px; }
+        .ch-lft { top: 11px; left: 0; width: 7px; height: 2px; }
+        .ch-rgt { top: 11px; right: 0; width: 7px; height: 2px; }
+        .ch-dot { top: 10px; left: 10px; width: 4px; height: 4px; background: #00f2fe; border-radius: 50%; }
+
+        /* 히트마커 (Hit Marker) */
+        #hitmarker {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 28px;
+            height: 28px;
+            transform: translate(-50%, -50%);
+            pointer-events: none;
+            display: none;
+        }
+        .hm-line {
+            position: absolute;
+            background: #ff3838;
+            box-shadow: 0 0 8px #ff3838;
+            width: 10px;
+            height: 3px;
+        }
+        .hm-1 { top: 3px; left: 3px; transform: rotate(45deg); }
+        .hm-2 { top: 3px; right: 3px; transform: rotate(-45deg); }
+        .hm-3 { bottom: 3px; left: 3px; transform: rotate(-45deg); }
+        .hm-4 { bottom: 3px; right: 3px; transform: rotate(45deg); }
+
+        /* 오버워치 HUD */
+        #hud-hp {
+            position: absolute;
+            bottom: 35px;
+            left: 50px;
+            color: #fff;
+            transform: skewX(-12deg);
+        }
+        #hp-val {
+            font-size: 38px;
+            font-weight: 900;
+            color: #ffffff;
+            text-shadow: 2px 2px 8px rgba(0,0,0,0.8);
+        }
+        #hp-bar-outer {
+            width: 240px;
+            height: 18px;
+            background: rgba(0,0,0,0.6);
+            border: 2px solid #57606f;
+            border-radius: 4px;
+            margin-top: 5px;
+            overflow: hidden;
+        }
+        #hp-bar-inner {
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, #ffffff, #f1f2f6);
+            box-shadow: 0 0 10px #ffffff;
+            transition: width 0.1s ease;
+        }
+
+        /* 탄약 UI (우측 하단) */
+        #hud-ammo {
+            position: absolute;
+            bottom: 30px;
+            right: 60px;
+            color: #00d2d3;
+            transform: skewX(-12deg);
+            text-shadow: 0 0 12px rgba(0, 210, 211, 0.6);
+            text-align: right;
+        }
+        #ammo-curr {
+            font-size: 64px;
+            font-weight: 900;
+        }
+        #ammo-max {
+            font-size: 26px;
+            font-weight: bold;
+            color: #a4b0be;
+        }
+
+        /* 궁극기 (Ultimate - Q) 게이지 */
+        #hud-ult {
+            position: absolute;
+            bottom: 35px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        #ult-circle {
+            width: 76px;
+            height: 76px;
+            border-radius: 50%;
+            border: 4px solid #2f3542;
+            background: rgba(15, 20, 30, 0.85);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            box-shadow: 0 0 15px rgba(0,0,0,0.7);
+        }
+        #ult-percent {
+            font-size: 22px;
+            font-weight: 900;
+            color: #00d2d3;
+        }
+        #ult-ready-tag {
+            margin-top: 6px;
+            font-size: 14px;
+            font-weight: bold;
+            color: #ff9f43;
+            letter-spacing: 1px;
+            display: none;
+            text-shadow: 0 0 8px #ff9f43;
+        }
+
+        /* 처치 알림 */
+        #kill-feed {
+            position: absolute;
+            top: 25%;
+            left: 50%;
+            transform: translateX(-50%) skewX(-10deg);
+            font-size: 32px;
+            font-weight: 900;
+            color: #ff4757;
+            text-shadow: 0 0 15px #ff4757;
+            display: none;
+        }
+
+        /* 전술 조준경 HUD 오버레이 */
+        #visor-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            background: radial-gradient(circle, rgba(255, 71, 87, 0.05) 0%, rgba(255, 71, 87, 0.25) 100%);
+            box-shadow: inset 0 0 80px rgba(255, 71, 87, 0.6);
+            border: 4px solid #ff4757;
+            display: none;
+            box-sizing: border-box;
+        }
+        #visor-text {
+            position: absolute;
+            top: 60px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 28px;
+            font-weight: 900;
+            color: #ff4757;
+            letter-spacing: 3px;
+            text-shadow: 0 0 12px #ff4757;
+        }
+
+        /* 킬 점수 */
+        #score-board {
+            position: absolute;
+            top: 25px;
+            left: 35px;
+            color: #fff;
+            font-size: 24px;
+            font-weight: 900;
+            letter-spacing: 1px;
+            transform: skewX(-10deg);
+        }
+
+        /* 인트로 안내 */
+        #instructions {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            background: rgba(10, 15, 25, 0.88);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            color: white;
+            cursor: pointer;
+            z-index: 100;
+        }
+        #instructions h1 {
+            font-size: 54px;
+            color: #fa9c1e;
+            letter-spacing: 3px;
+            margin-bottom: 8px;
+            text-shadow: 0 0 20px #fa9c1e;
+        }
+        #instructions p {
+            font-size: 19px;
+            color: #dfe4ea;
+            line-height: 2.0;
+            text-align: center;
+        }
+        .key {
+            background: #2f3542;
+            border: 1px solid #747d8c;
+            padding: 4px 10px;
+            border-radius: 5px;
+            font-weight: bold;
+            color: #00d2d3;
+        }
+    </style>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+</head>
+<body>
+    <div id="crosshair">
+        <div class="ch-line ch-top"></div>
+        <div class="ch-line ch-bot"></div>
+        <div class="ch-line ch-lft"></div>
+        <div class="ch-line ch-rgt"></div>
+        <div class="ch-dot"></div>
+    </div>
+
+    <div id="hitmarker">
+        <div class="hm-line hm-1"></div>
+        <div class="hm-line hm-2"></div>
+        <div class="hm-line hm-3"></div>
+        <div class="hm-line hm-4"></div>
+    </div>
+
+    <div id="score-board">ELIMINATIONS: <span id="score-val" style="color:#fa9c1e">0</span></div>
+
+    <div id="hud-hp">
+        <span id="hp-val">200</span>
+        <div id="hp-bar-outer">
+            <div id="hp-bar-inner"></div>
+        </div>
+    </div>
+
+    <div id="hud-ult">
+        <div id="ult-circle">
+            <span id="ult-percent">0%</span>
+        </div>
+        <div id="ult-ready-tag">PRESS [Q] READY</div>
+    </div>
+
+    <div id="hud-ammo">
+        <span id="ammo-curr">25</span>
+        <span id="ammo-max">/ 25</span>
+    </div>
+
+    <div id="kill-feed">ELIMINATED TRAINING BOT</div>
+
+    <div id="visor-overlay">
+        <div id="visor-text">⚡ TACTICAL VISOR ACTIVE ⚡</div>
+    </div>
+
+    <div id="instructions">
+        <h1>OVERWATCH PRACTICE RANGE</h1>
+        <p>
+            화면을 클릭하면 훈련장에 진입합니다.<br><br>
+            <span class="key">W</span> <span class="key">A</span> <span class="key">S</span> <span class="key">D</span> : 이동<br>
+            <span class="key">마우스</span> : 에임 조준<br>
+            <span class="key">좌클릭</span> : 펄스 라이플 사격 (누르면 연사)<br>
+            <span class="key">Space</span> : 점프 (중앙 점프 패드 밟으면 슈퍼 점프!)<br>
+            <span class="key">Q</span> : [전술 조준경] 궁극기 발동 (자동 조준, 무한 탄약)<br>
+            <span class="key">R</span> : 재장전  |  <span class="key">ESC</span> : 커서 해제
+        </p>
+    </div>
+
+    <script>
+        // --- 사운드 효과음 신디사이저 ---
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        function playLaserSound() {
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.type = 'sawtooth';
+            osc.frequency.setValueAtTime(520, audioCtx.currentTime);
+            osc.frequency.exponentialRampToValueAtTime(70, audioCtx.currentTime + 0.1);
+            gain.gain.setValueAtTime(0.25, audioCtx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.1);
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            osc.start();
+            osc.stop(audioCtx.currentTime + 0.1);
+        }
+
+        function playHitSound(isKill) {
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.type = 'triangle';
+            const startFreq = isKill ? 700 : 450;
+            const endFreq = isKill ? 1200 : 900;
+            osc.frequency.setValueAtTime(startFreq, audioCtx.currentTime);
+            osc.frequency.exponentialRampToValueAtTime(endFreq, audioCtx.currentTime + 0.08);
+            gain.gain.setValueAtTime(0.3, audioCtx.currentTime);
+            gain.gain.linearRampToValueAtTime(0.01, audioCtx.currentTime + 0.08);
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            osc.start();
+            osc.stop(audioCtx.currentTime + 0.08);
+        }
+
+        // 탄약 소진 시 피드백 사운드 (개선: 빈 탄창 클릭이 조용히 무시되지 않도록)
+        function playEmptySound() {
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.type = 'square';
+            osc.frequency.setValueAtTime(200, audioCtx.currentTime);
+            gain.gain.setValueAtTime(0.15, audioCtx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.05);
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            osc.start();
+            osc.stop(audioCtx.currentTime + 0.05);
+        }
+
+        // --- 씬 구성 (고대비 다크 사이버 훈련장) ---
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x101420); // 짙은 밤하늘/다크 네이비
+        scene.fog = new THREE.Fog(0x101420, 35, 120);
+
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        camera.position.set(0, 1.8, 0);
+        // 개선: FPS 시점에서는 yaw(Y)를 먼저 적용하고 pitch(X)를 나중에 적용해야
+        // 카메라가 롤 방향으로 틀어지지 않음 (기본값 'XYZ'는 축이 어긋나 보이는 원인)
+        camera.rotation.order = 'YXZ';
+
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2)); // 개선: 고DPI 화면 선명도
+        renderer.shadowMap.enabled = true;
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        document.body.appendChild(renderer.domElement);
+
+        // 조명 (균형잡힌 대비 조명)
+        const hemiLight = new THREE.HemisphereLight(0xdde5f0, 0x222a38, 0.65);
+        hemiLight.position.set(0, 30, 0);
+        scene.add(hemiLight);
+
+        const dirLight = new THREE.DirectionalLight(0xfff3e0, 0.9);
+        dirLight.position.set(20, 40, 20);
+        dirLight.castShadow = true;
+        dirLight.shadow.mapSize.width = 2048;
+        dirLight.shadow.mapSize.height = 2048;
+        scene.add(dirLight);
+
+        // 바닥 (다크 하이테크 타일)
+        const floorGeo = new THREE.PlaneGeometry(120, 120);
+        const floorMat = new THREE.MeshStandardMaterial({ color: 0x262c38, roughness: 0.4, metalness: 0.2 });
+        const floor = new THREE.Mesh(floorGeo, floorMat);
+        floor.rotation.x = -Math.PI / 2;
+        floor.receiveShadow = true;
+        scene.add(floor);
+
+        // 네온 그리드 라인
+        const grid = new THREE.GridHelper(120, 60, 0x00d2d3, 0x3d485a);
+        grid.position.y = 0.02;
+        scene.add(grid);
+
+        // 슈퍼 점프 패드 (Overwatch Jump Pad)
+        const padGroup = new THREE.Group();
+        const padBase = new THREE.Mesh(new THREE.CylinderGeometry(3, 3.2, 0.2, 32), new THREE.MeshStandardMaterial({ color: 0x222f3e }));
+        padGroup.add(padBase);
+        const padRing = new THREE.Mesh(new THREE.CylinderGeometry(2.3, 2.3, 0.25, 32), new THREE.MeshStandardMaterial({ color: 0xfa9c1e, emissive: 0xfa9c1e, emissiveIntensity: 0.5 }));
+        padGroup.add(padRing);
+        const padCore = new THREE.Mesh(new THREE.CylinderGeometry(1.2, 1.2, 0.3, 32), new THREE.MeshStandardMaterial({ color: 0x00d2d3, emissive: 0x00d2d3, emissiveIntensity: 0.8 }));
+        padGroup.add(padCore);
+        padGroup.position.set(0, 0.1, 0);
+        scene.add(padGroup);
+
+        // 개선: 총알이 막힐 수 있는 엄폐물(기둥/벽) 모음 - 레이캐스트에서 사용
+        const obstacles = [];
+
+        // 미래형 네온 기둥 엄폐물
+        function createCyberPillar(x, z) {
+            const pGroup = new THREE.Group();
+            const pillar = new THREE.Mesh(new THREE.BoxGeometry(4, 8, 4), new THREE.MeshStandardMaterial({ color: 0x2f3542, roughness: 0.4 }));
+            pillar.castShadow = true;
+            pillar.receiveShadow = true;
+            pGroup.add(pillar);
+
+            const neonRing1 = new THREE.Mesh(new THREE.BoxGeometry(4.1, 0.3, 4.1), new THREE.MeshBasicMaterial({ color: 0xfa9c1e }));
+            pGroup.add(neonRing1);
+            const neonRing2 = new THREE.Mesh(new THREE.BoxGeometry(4.1, 0.3, 4.1), new THREE.MeshBasicMaterial({ color: 0x00d2d3 }));
+            neonRing2.position.y = 2.5;
+            pGroup.add(neonRing2);
+
+            pGroup.position.set(x, 4, z);
+            scene.add(pGroup);
+
+            // 개선: 기둥 본체를 엄폐물 목록에 등록 (총알이 기둥에 막히도록)
+            pillar.updateMatrixWorld(true);
+            obstacles.push(pillar);
+        }
+        createCyberPillar(-18, 15);
+        createCyberPillar(18, 15);
+        createCyberPillar(-25, -15);
+        createCyberPillar(25, -15);
+        createCyberPillar(0, 30);
+
+        // 외곽 하이테크 벽
+        const wallMat = new THREE.MeshStandardMaterial({ color: 0x34495e, transparent: true, opacity: 0.85 });
+        function createWall(x, z, w, d) {
+            const wall = new THREE.Mesh(new THREE.BoxGeometry(w, 14, d), wallMat);
+            wall.position.set(x, 7, z);
+            scene.add(wall);
+            obstacles.push(wall); // 개선: 벽도 엄폐물로 등록
+        }
+        createWall(0, 60, 120, 2);
+        createWall(0, -60, 120, 2);
+        createWall(60, 0, 2, 120);
+        createWall(-60, 0, 2, 120);
+
+        // --- 오버워치 펄스 라이플 3D 모델링 ---
+        const gunHolder = new THREE.Group();
+        // 메인 바디
+        const gunBody = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.18, 0.7), new THREE.MeshStandardMaterial({ color: 0xf1f2f6, roughness: 0.2 }));
+        gunHolder.add(gunBody);
+        // 카본 상판
+        const gunTop = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.08, 0.6), new THREE.MeshStandardMaterial({ color: 0x222f3e }));
+        gunTop.position.set(0, 0.11, -0.05);
+        gunHolder.add(gunTop);
+        // 네온 코어
+        const gunNeon = new THREE.Mesh(new THREE.BoxGeometry(0.145, 0.03, 0.4), new THREE.MeshBasicMaterial({ color: 0x00d2d3 }));
+        gunNeon.position.set(0, 0.02, 0.05);
+        gunHolder.add(gunNeon);
+        // 홀로그램 조준기
+        const holoFrame = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.12, 0.04), new THREE.MeshStandardMaterial({ color: 0x2f3542 }));
+        holoFrame.position.set(0, 0.18, 0.1);
+        gunHolder.add(holoFrame);
+        // 총열
+        const barrel = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 0.3, 16), new THREE.MeshStandardMaterial({ color: 0x1e272e }));
+        barrel.rotation.x = Math.PI / 2;
+        barrel.position.set(0, 0.02, -0.45);
+        gunHolder.add(barrel);
+
+        gunHolder.position.set(0.38, -0.32, -0.65);
+        camera.add(gunHolder);
+        scene.add(camera);
+
+        // 총구 화염 조명
+        const muzzleLight = new THREE.PointLight(0x00d2d3, 0, 6);
+        muzzleLight.position.set(0.38, -0.3, -1.1);
+        camera.add(muzzleLight);
+
+        // --- 오버워치 훈련용 봇 (Overwatch Training Bot) ---
+        const bots = [];
+        const botBodyMat = new THREE.MeshStandardMaterial({ color: 0xc0392b, roughness: 0.3 });
+        const botHeadMat = new THREE.MeshStandardMaterial({ color: 0xecf0f1, roughness: 0.2 });
+        const botVisorMat = new THREE.MeshBasicMaterial({ color: 0x00d2d3 });
+
+        function spawnBot(x, z) {
+            const bGroup = new THREE.Group();
+
+            // 둥근 붉은 몸통
+            const bBody = new THREE.Mesh(new THREE.SphereGeometry(1.0, 24, 24), botBodyMat);
+            bBody.scale.set(1.1, 0.9, 1.1);
+            bBody.position.y = 1.1;
+            bBody.castShadow = true;
+            bGroup.add(bBody);
+
+            // 둥근 머리
+            const bHead = new THREE.Mesh(new THREE.SphereGeometry(0.65, 24, 24), botHeadMat);
+            bHead.position.y = 2.0;
+            bHead.castShadow = true;
+            bGroup.add(bHead);
+
+            // 가로형 네온 바이저(눈)
+            const bVisor = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.15, 0.25), botVisorMat);
+            bVisor.position.set(0, 2.0, 0.55);
+            bGroup.add(bVisor);
+
+            // 부유 링
+            const bRing = new THREE.Mesh(new THREE.CylinderGeometry(0.9, 0.9, 0.15, 24), new THREE.MeshStandardMaterial({ color: 0x2c3e50 }));
+            bRing.position.y = 0.35;
+            bGroup.add(bRing);
+
+            // 머리 위 체력바 Canvas Texture
+            const hpCanvas = document.createElement('canvas');
+            hpCanvas.width = 128;
+            hpCanvas.height = 16;
+            const hpCtx = hpCanvas.getContext('2d');
+            const hpTex = new THREE.CanvasTexture(hpCanvas);
+            const hpSprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: hpTex }));
+            hpSprite.scale.set(2.0, 0.25, 1);
+            hpSprite.position.y = 2.8;
+            bGroup.add(hpSprite);
+
+            function updateBotHpBar(curr, max) {
+                hpCtx.fillStyle = '#000000';
+                hpCtx.fillRect(0, 0, 128, 16);
+                hpCtx.fillStyle = '#ff4757';
+                hpCtx.fillRect(2, 2, (curr / max) * 124, 12);
+                hpTex.needsUpdate = true;
+            }
+            updateBotHpBar(150, 150);
+
+            bGroup.position.set(x, 0.2, z);
+            bGroup.userData = {
+                hp: 150,
+                maxHp: 150,
+                baseY: 0.2,
+                timeOffset: Math.random() * 10,
+                updateHp: updateBotHpBar,
+                bodyMesh: bBody,
+                visorMesh: bVisor
+            };
+
+            scene.add(bGroup);
+            bots.push(bGroup);
+        }
+
+        // 초기 봇 배치
+        spawnBot(-25, 20);
+        spawnBot(-12, 35);
+        spawnBot(0, 25);
+        spawnBot(12, 38);
+        spawnBot(25, 18);
+        spawnBot(0, 48);
+
+        // --- 컨트롤 및 조작 ---
+        let isLocked = false;
+        const instructions = document.getElementById('instructions');
+        instructions.addEventListener('click', () => document.body.requestPointerLock());
+        document.addEventListener('pointerlockchange', () => {
+            isLocked = (document.pointerLockElement === document.body);
+            instructions.style.display = isLocked ? 'none' : 'flex';
+        });
+
+        let yaw = 0, pitch = 0;
+        let mouseDeltaX = 0, mouseDeltaY = 0;
+
+        document.addEventListener('mousemove', (e) => {
+            if (!isLocked) return;
+            const sens = 0.0022;
+            mouseDeltaX = e.movementX;
+            mouseDeltaY = e.movementY;
+            yaw -= e.movementX * sens;
+            pitch -= e.movementY * sens;
+            pitch = Math.max(-Math.PI / 2.2, Math.min(Math.PI / 2.2, pitch));
+
+            camera.rotation.set(0, 0, 0);
+            camera.rotation.y = yaw;
+            camera.rotation.x = pitch;
+        });
+
+        const keys = {};
+        window.addEventListener('keydown', (e) => {
+            keys[e.code] = true;
+            if (e.code === 'KeyR') reload();
+            if (e.code === 'KeyQ') activateUltimate();
+        });
+        window.addEventListener('keyup', (e) => keys[e.code] = false);
+
+        // --- 사격 및 궁극기 시스템 ---
+        let ammo = 25;
+        let maxAmmo = 25;
+        let score = 0;
+        let ultPercent = 0;
+        let ultActive = false;
+        let ultTimer = 0;
+        let isShooting = false;
+        let lastShot = 0;
+        let isReloading = false;
+
+        window.addEventListener('mousedown', (e) => { if (isLocked && e.button === 0) isShooting = true; });
+        window.addEventListener('mouseup', (e) => { if (e.button === 0) isShooting = false; });
+
+        function showHitmarker(isKill) {
+            const hm = document.getElementById('hitmarker');
+            const lines = hm.querySelectorAll('.hm-line');
+            lines.forEach(l => l.style.background = isKill ? '#ff3838' : '#ffa502');
+            hm.style.display = 'block';
+            setTimeout(() => hm.style.display = 'none', 90);
+        }
+
+        // 개선: 총알마다 geometry/material을 새로 만들지 않고 공유 리소스를 재사용 (GC 부담 감소)
+        const laserGeom = new THREE.CylinderGeometry(0.03, 0.03, 1, 8);
+        const laserMat = new THREE.MeshBasicMaterial({ color: 0x00f2fe });
+
+        function createLaserTracer(start, end) {
+            const laser = new THREE.Mesh(laserGeom, laserMat);
+            const length = start.distanceTo(end);
+            laser.scale.set(1, length, 1);
+            laser.position.copy(start).add(end).multiplyScalar(0.5);
+            laser.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), end.clone().sub(start).normalize());
+            scene.add(laser);
+            setTimeout(() => scene.remove(laser), 80);
+        }
+
+        function shoot() {
+            const now = performance.now();
+            const interval = ultActive ? 75 : 110;
+            if (now - lastShot < interval || isReloading) return;
+
+            // 개선: 궁극기(전술 조준경) 사용 중에는 탄약을 소모하지 않음
+            if (!ultActive && ammo <= 0) {
+                playEmptySound();
+                reload();
+                return;
+            }
+
+            lastShot = now;
+            if (!ultActive) {
+                ammo--;
+                document.getElementById('ammo-curr').innerText = ammo;
+            }
+            playLaserSound();
+
+            // 반동 (Recoil)
+            gunHolder.position.z = -0.48;
+            gunHolder.position.y = -0.26;
+            gunHolder.rotation.x = 0.15;
+            muzzleLight.intensity = 3;
+            setTimeout(() => {
+                muzzleLight.intensity = 0;
+                gunHolder.rotation.x = 0;
+            }, 60);
+
+            // 사격 레이캐스트
+            const raycaster = new THREE.Raycaster();
+            let shootDir = new THREE.Vector3(0, 0, -1).applyEuler(camera.rotation);
+
+            // 궁극기 전술 조준경 자동 락온
+            if (ultActive && bots.length > 0) {
+                let closestBot = null;
+                let minDist = Infinity;
+                bots.forEach(b => {
+                    const dist = camera.position.distanceTo(b.position);
+                    if (dist < minDist) { minDist = dist; closestBot = b; }
+                });
+                if (closestBot) {
+                    shootDir = closestBot.position.clone().add(new THREE.Vector3(0, 2.0, 0)).sub(camera.position).normalize();
+                }
+            }
+            raycaster.set(camera.position, shootDir);
+
+            // 총구 시작 위치 계산
+            const muzzleWorld = new THREE.Vector3();
+            gunHolder.getWorldPosition(muzzleWorld);
+            muzzleWorld.add(shootDir.clone().multiplyScalar(0.5));
+
+            // 타겟 검사
+            const botMeshes = [];
+            bots.forEach(b => b.traverse(child => {
+                if (child.isMesh && child.geometry.type !== 'PlaneGeometry') {
+                    child.userData.botGroup = b;
+                    botMeshes.push(child);
+                }
+            }));
+
+            // 개선: 엄폐물(기둥/벽)도 함께 검사해서 총알이 막히도록 처리
+            const combinedTargets = botMeshes.concat(obstacles);
+            const hits = raycaster.intersectObjects(combinedTargets);
+
+            if (hits.length > 0) {
+                const hitObj = hits[0].object;
+                const endPos = hits[0].point;
+                createLaserTracer(muzzleWorld, endPos);
+
+                const hitBot = hitObj.userData.botGroup;
+                if (hitBot) {
+                    hitBot.userData.hp -= (ultActive ? 45 : 35);
+                    hitBot.userData.updateHp(hitBot.userData.hp, hitBot.userData.maxHp);
+
+                    // 피격 깜빡임
+                    hitBot.userData.bodyMesh.material.color.setHex(0xffffff);
+                    hitBot.userData.visorMesh.material.color.setHex(0xffffff);
+                    setTimeout(() => {
+                        hitBot.userData.bodyMesh.material.color.setHex(0xc0392b);
+                        hitBot.userData.visorMesh.material.color.setHex(0x00d2d3);
+                    }, 70);
+
+                    // 궁극기 충전 (+8%)
+                    addUltCharge(8);
+
+                    if (hitBot.userData.hp <= 0) {
+                        playHitSound(true);
+                        showHitmarker(true);
+                        // 처치 안내
+                        const kf = document.getElementById('kill-feed');
+                        kf.style.display = 'block';
+                        setTimeout(() => kf.style.display = 'none', 1200);
+
+                        score++;
+                        document.getElementById('score-val').innerText = score;
+                        scene.remove(hitBot);
+                        bots.splice(bots.indexOf(hitBot), 1);
+                        setTimeout(() => spawnBot((Math.random() - 0.5) * 60, 15 + Math.random() * 30), 2500);
+                    } else {
+                        playHitSound(false);
+                        showHitmarker(false);
+                    }
+                }
+                // hitBot이 없으면 엄폐물에 맞은 것 -> 타격 이펙트/데미지 없이 트레이서만 표시
+            } else {
+                createLaserTracer(muzzleWorld, camera.position.clone().add(shootDir.clone().multiplyScalar(70)));
+            }
+        }
+
+        function reload() {
+            if (isReloading || ammo === maxAmmo) return;
+            isReloading = true;
+            document.getElementById('ammo-curr').innerText = '--';
+
+            gunHolder.rotation.z = 0.6;
+            gunHolder.rotation.x = 0.4;
+            gunHolder.position.y = -0.55;
+
+            setTimeout(() => {
+                ammo = maxAmmo;
+                document.getElementById('ammo-curr').innerText = ultActive ? '∞' : ammo;
+                gunHolder.rotation.z = 0;
+                gunHolder.rotation.x = 0;
+                gunHolder.position.y = -0.32;
+                isReloading = false;
+            }, 1000);
+        }
+
+        function addUltCharge(amt) {
+            if (ultActive) return;
+            ultPercent = Math.min(100, ultPercent + amt);
+            document.getElementById('ult-percent').innerText = ultPercent + '%';
+            if (ultPercent >= 100) {
+                document.getElementById('ult-percent').innerText = 'READY';
+                document.getElementById('ult-circle').style.borderColor = '#fa9c1e';
+                document.getElementById('ult-ready-tag').style.display = 'block';
+            }
+        }
+
+        function activateUltimate() {
+            if (ultPercent < 100 || ultActive) return;
+            ultActive = true;
+            ultPercent = 0;
+            ultTimer = 6.0;
+            document.getElementById('visor-overlay').style.display = 'block';
+            document.getElementById('ult-ready-tag').style.display = 'none';
+            document.getElementById('ammo-curr').innerText = '∞'; // 개선: 궁극기 중 무한 탄약 표시
+        }
+
+        // --- 메인 루프 (물리, 스웨이, 보빙, 점프패드) ---
+        let velocityY = 0;
+        let isGrounded = true;
+        let walkTime = 0;
+        const clock = new THREE.Clock();
+
+        function animate() {
+            requestAnimationFrame(animate);
+            const delta = Math.min(clock.getDelta(), 0.1);
+
+            if (isLocked) {
+                if (isShooting) shoot();
+
+                // 1. 이동 (개선: 벡터를 정규화해서 대각선 이동이 더 빨라지지 않도록 수정)
+                const moveSpeed = 10 * delta;
+                const forward = new THREE.Vector3(0, 0, -1).applyAxisAngle(new THREE.Vector3(0, 1, 0), yaw);
+                const right = new THREE.Vector3(1, 0, 0).applyAxisAngle(new THREE.Vector3(0, 1, 0), yaw);
+
+                const moveDir = new THREE.Vector3();
+                if (keys['KeyW']) moveDir.add(forward);
+                if (keys['KeyS']) moveDir.sub(forward);
+                if (keys['KeyA']) moveDir.sub(right);
+                if (keys['KeyD']) moveDir.add(right);
+                const isMoving = moveDir.lengthSq() > 0;
+                if (isMoving) {
+                    moveDir.normalize();
+                    camera.position.addScaledVector(moveDir, moveSpeed);
+                }
+
+                // 2. 점프 및 중력
+                if (keys['Space'] && isGrounded) {
+                    velocityY = 8.5;
+                    isGrounded = false;
+                }
+
+                // 점프 패드 충돌 (Overwatch Jump Pad)
+                if (camera.position.distanceTo(padGroup.position) < 3.2 && camera.position.y < 2.0) {
+                    velocityY = 20.0; // 슈퍼 점프 발사!
+                    isGrounded = false;
+                }
+
+                velocityY -= 26 * delta;
+                camera.position.y += velocityY * delta;
+
+                if (camera.position.y <= 1.8) {
+                    camera.position.y = 1.8;
+                    velocityY = 0;
+                    isGrounded = true;
+                }
+
+                // 경계 제한
+                camera.position.x = Math.max(-57, Math.min(57, camera.position.x));
+                camera.position.z = Math.max(-57, Math.min(57, camera.position.z));
+
+                // 3. 웨폰 스웨이 (Weapon Sway) & 보빙
+                if (!isReloading) {
+                    const targetRotY = -mouseDeltaX * 0.001;
+                    const targetRotX = mouseDeltaY * 0.001;
+                    gunHolder.rotation.y += (targetRotY - gunHolder.rotation.y) * 0.15;
+                    gunHolder.rotation.x += (targetRotX - gunHolder.rotation.x) * 0.15;
+                    mouseDeltaX *= 0.8;
+                    mouseDeltaY *= 0.8;
+
+                    // 이동 시 보빙 (Walking Bobbing)
+                    if (isMoving && isGrounded) {
+                        walkTime += delta * 12;
+                        gunHolder.position.x = 0.38 + Math.sin(walkTime) * 0.015;
+                        gunHolder.position.y = -0.32 + Math.cos(walkTime * 2) * 0.012;
+                    } else {
+                        gunHolder.position.x += (0.38 - gunHolder.position.x) * 0.1;
+                        gunHolder.position.y += (-0.32 - gunHolder.position.y) * 0.1;
+                    }
+                    gunHolder.position.z += (-0.65 - gunHolder.position.z) * 0.15;
+                }
+
+                // 4. 궁극기 타이머
+                if (ultActive) {
+                    ultTimer -= delta;
+                    document.getElementById('ult-percent').innerText = ultTimer.toFixed(1) + 's';
+                    if (ultTimer <= 0) {
+                        ultActive = false;
+                        document.getElementById('visor-overlay').style.display = 'none';
+                        document.getElementById('ult-percent').innerText = '0%';
+                        document.getElementById('ult-circle').style.borderColor = '#2f3542';
+                        document.getElementById('ammo-curr').innerText = ammo; // 개선: 궁극기 종료 시 실제 탄약 수 복원
+                    }
+                }
+            }
+
+            // 봇 상하 부유 애니메이션 및 플레이어 응시
+            const nowSec = performance.now() * 0.001;
+            bots.forEach(b => {
+                b.position.y = b.userData.baseY + Math.sin(nowSec * 2.5 + b.userData.timeOffset) * 0.15;
+                b.lookAt(camera.position.x, b.position.y, camera.position.z);
+            });
+
+            renderer.render(scene, camera);
+        }
+
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        animate();
+    </script>
+</body>
+</html>

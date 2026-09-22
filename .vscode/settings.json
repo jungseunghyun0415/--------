@@ -1,0 +1,14 @@
+{
+    "terminal.integrated.defaultProfile.windows": "PowerShell",
+
+    "terminal.integrated.profiles.windows": {
+        "PowerShell": {
+            "path": "powershell.exe",
+            "args": [
+                "-NoExit",
+                "-Command",
+                "& '.\\.venv\\Scripts\\Activate.ps1'"
+            ]
+        }
+    }
+}

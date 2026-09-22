@@ -19,3 +19,4 @@ if __name__ == "__main__":
     print(primes)
     print(f"\n총 개수: {len(primes)}개")
 
+print("git실습")

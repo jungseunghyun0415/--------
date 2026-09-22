@@ -1,22 +1,16 @@
-def is_prime(n: int) -> bool:
-    """주어진 정수 n이 소수인지 판별하는 함수"""
-    if n < 2:
-        return False
-    for i in range(2, int(n**0.5) + 1):
-        if n % i == 0:
-            return False
-    return True
+# prime_numbers.py - 제곱근을 이용한 속도 최적화 버전
+import math
 
+print("1부터 100 사이의 소수 (최적화 버전):")
 
-def find_primes(limit: int = 100) -> list[int]:
-    """1부터 limit까지의 소수 목록을 반환하는 함수"""
-    return [num for num in range(1, limit + 1) if is_prime(num)]
+for num in range(2, 101):
+    is_prime = True
 
+    # 제곱근까지만 나누어떨어지는지 확인
+    for i in range(2, int(math.sqrt(num)) + 1):
+        if num % i == 0:
+            is_prime = False
+            break
 
-if __name__ == "__main__":
-    primes = find_primes(100)
-    print("=== 1부터 100 사이의 소수 ===")
-    print(primes)
-    print(f"\n총 개수: {len(primes)}개")
-
-print("git실습")
+    if is_prime:
+        print(num, end=" ")
